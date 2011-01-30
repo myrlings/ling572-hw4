@@ -15,7 +15,10 @@ def get_vectors(data_filename):
     
         instances[instance_name] = {}
         instances[instance_name]['class_label'] = label
-        labels[label] += 1
+        if label in labels:
+            labels[label] += 1
+        else:
+            labels[label] = 1
             
         features = line_array[2::2] # every other word in line starting with third
         values = line_array[3::2] # every other word in line starting with fourth
@@ -29,35 +32,74 @@ def get_vectors(data_filename):
     data_file.close()
     return [instances, labels]
 
+# get euclidean distance between two vectors
 def get_euclidean(instance_vector, neighbor_vector):
     sum = 0
+    instance_set = set(instance_vector.keys())
+    neighbor_set = set(neighbor_vector.keys())
+    all_features = instance_set.union(neighbor_set)
+    for feature in all_features:
+        to_square = 0
+        if feature == 'class_label':
+            continue
+        if (feature in neighbor_vector) and (feature in instance_vector):
+            to_square = (int(instance_vector[feature]) -\
+            int(neighbor_vector[feature]))
+        elif (feature in instance_vector):
+            to_square = int(instance_vector[feature])
+        else:
+            to_square = int(neighbor_vector[feature])
+        sum += to_square * to_square
+    return math.sqrt(sum)
+
+def get_cosine(instance_vector, neighbor_vector):
+    # get dot product (sum of products)
+    # and square of the norm (distance)
+    dot_product = 0
+    norm_sq1 = 0
+    norm_sq2 = 0
     for feature in instance_vector:
         if feature == 'class_label':
             continue
-        if feature in neighbor_vector:
-            sum += (int(instance_vector[feature]) -\
-            int(neighbor_vector[feature]))**2
-        else:
-            sum += (int(instance_vector[feature]))**2
-    return math.sqrt(sum)
-
-def get_cosine(train_vectors, instance_vector, neighbor_vector):
-    return 0
+        # only get dot product if there is no 0
+        if (feature in neighbor_vector):
+            dot_product += int(instance_vector[feature])*\
+            int(neighbor_vector[feature])
+        norm_sq1 += int(instance_vector[feature]) *\
+        int(instance_vector[feature])
+    for feature in neighbor_vector:
+        if feature == 'class_label':
+            continue
+        norm_sq2 += int(neighbor_vector[feature]) * \
+        int(neighbor_vector[feature])
+    return dot_product / (math.sqrt(norm_sq1)*math.sqrt(norm_sq2))
 
 # return a list, same length as vector_list, with distance inserted
 # in proper spot (so worst distance gets bumped off)
-def insert_distance(vector_list, distance, name):
+def insert_distance(vector_list, distance, name, dist_or_sim):
     new_list = []
-    for slot in range(len(vector_list)):
-        if distance < vector_list[slot][1]:
-            if slot == 0:
-                new_list = [[name, distance]]
-                new_list.extend(vector_list[0:len(vector_list)])
-            else:
-                new_list = vector_list[0:slot]
-                new_list.append([name, distance])
-                new_list.extend(vector_list[slot:len(vector_list)])
-            break
+    if (dist_or_sim == "dist"):
+        for slot in range(len(vector_list)):
+            if distance < vector_list[slot][1]:
+                if slot == 0:
+                    new_list = [[name, distance]]
+                    new_list.extend(vector_list[0:len(vector_list)])
+                else:
+                    new_list = vector_list[0:slot]
+                    new_list.append([name, distance])
+                    new_list.extend(vector_list[slot:len(vector_list)])
+                break
+    else:
+        for slot in range(len(vector_list)):
+            if distance > vector_list[slot][1]:
+                if slot == 0:
+                    new_list = [[name, distance]]
+                    new_list.extend(vector_list[0:len(vector_list)])
+                else:
+                    new_list = vector_list[0:slot]
+                    new_list.append([name, distance])
+                    new_list.extend(vector_list[slot:len(vector_list)])
+                break
 
     return new_list[0:len(vector_list)]
 
@@ -78,27 +120,44 @@ def insert_similarity(vector_list, similarity, name):
 
     return new_list[0:len(vector_list)]
 
+# return probabilities of each label based on the nearest neighbors
+# specify the best prob in 'winner'
 def vote(neighbors_list, all_vectors, labels):
     ranks = {}
+    for label in labels:
+        ranks[label] = 0
     for neighbor in neighbors_list:
+        print all_vectors[neighbor[0]]
         label = all_vectors[neighbor[0]]['class_label']
-        if label in ranks:
-            ranks[label] += 1
-        else:
-            ranks[label] = 1
+        ranks[label] += 1
 
     for label in ranks:
-        ranks[label] = ranks[label] / len(neighbors_list)
+        if ranks[label] > 0:
+            ranks[label] = float(ranks[label]) / len(neighbors_list)
 
     best_label = ""
     best_prob = 0
     for label in ranks:
-        if ranks[label] > best_prob:
+        if ranks[label] >= best_prob:
             best_label = label
             best_prob = ranks[label]
 
-    ranks['winner'] = best_label
+    #ranks['winner'] = best_label
     return ranks
+
+def print_sys(vector_guesses, sys, real_vectors):
+    for instance in vector_guesses:
+        real_class = real_vectors[instance]['class_label']
+        sys.write(instance + " ")
+        #sys.write(vector_guesses[instance]['winner'] + " ")
+        #vector_guesses[instance].pop('winner')
+        sys.write(real_class + " ")
+        sorted_votes = sorted(vector_guesses[instance].iteritems()\
+        , key=itemgetter(1), reverse=True)
+        for tup in sorted_votes:
+            sys.write(tup[0] + " ")
+            sys.write(str(tup[1]) + " ")
+        sys.write("\n")
 
 # main
 if (len(sys.argv) < 6):
@@ -118,7 +177,11 @@ labels = vectors_labels[1]
 vector_scores = {}
 vector_guesses = {}
 for instance_vector in train_vectors:
-    vector_scores[instance_vector] = [[[""],[float("inf")]]]*k
+    if similarity_func == 1:
+        vector_scores[instance_vector] = [[[""],[float("inf")]]]*k
+    else:
+        vector_scores[instance_vector] = [[[""],0.0]]*k
+    print vector_scores
     #for i in range(0,k-1):
     #    vector_scores[instance_vector][i][1] = float("inf")
 
@@ -134,15 +197,60 @@ for instance_vector in train_vectors:
             if distance < vector_scores[instance_vector][k-1][1]:
                 vector_scores[instance_vector] = \
                 insert_distance(vector_scores[instance_vector], distance,\
-                neighbor_vector)
+                neighbor_vector, "dist")
         # get cosine similarity
         else:
-            similarity = get_cosine(instance_vector, neighbor_vector)
-            vector_scores[instance_vector][neighbor_vector] = distance
+            similarity = get_cosine(train_vectors[instance_vector],
+            train_vectors[neighbor_vector])
+            if similarity > vector_scores[instance_vector][k-1][1]:
+                vector_scores[instance_vector] = \
+                insert_distance(vector_scores[instance_vector], similarity,\
+                neighbor_vector, "sim")
 
     # find the class based on the neighbors
-    vector_guess[instance_vector] = vote(vector_scores[instance_vector],\
+    vector_guesses[instance_vector] = vote(vector_scores[instance_vector],\
     train_vectors, labels)
 
-## write print_sys method
-print_sys(vector_guess)
+sys = open(sys_filename, 'w')
+sys.write("%%%%% training data:\n")
+print_sys(vector_guesses, sys, train_vectors)
+
+test_vectors_labels = get_vectors(test_data_filename)
+test_vectors = test_vectors_labels[0]
+
+# process test vectors
+test_scores = {}
+test_guesses = {}
+for instance_vector in test_vectors:
+    test_scores[instance_vector] = [[[""],[float("inf")]]]*k
+    #for i in range(0,k-1):
+    #    test_scores[instance_vector][i][1] = float("inf")
+
+    for neighbor_vector in train_vectors:
+        # don't need distance between itself
+        if train_vectors[neighbor_vector] == test_vectors[instance_vector]:
+            continue
+        # get euclidean distance
+        if similarity_func == 1:
+            distance = get_euclidean(test_vectors[instance_vector], \
+            train_vectors[neighbor_vector])
+            # if the distance is better than the last one of the sorted list
+            if distance < test_scores[instance_vector][k-1][1]:
+                test_scores[instance_vector] = \
+                insert_distance(test_scores[instance_vector], distance,\
+                neighbor_vector, "dist")
+        # get cosine similarity
+        else:
+            similarity = get_cosine(test_vectors[instance_vector],\
+            train_vectors[neighbor_vector])
+            if similarity > vector_scores[instance_vector][k-1][1]:
+                test_scores[instance_vector] = \
+                insert_distance(test_scores[instance_vector], similarity,\
+                neighbor_vector, "sim")
+
+    # find the class based on the neighbors
+    test_guesses[instance_vector] = vote(test_scores[instance_vector],\
+    train_vectors, labels)
+
+sys.write("\n%%%%% testing data:\n")
+print_sys(test_guesses, sys, test_vectors)

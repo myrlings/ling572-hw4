@@ -4,10 +4,11 @@ import sys
 from operator import itemgetter
 
 def get_vectors(data_filename):
-    data_file = open(train_data_filename, 'r')
+    data_file = open(data_filename, 'r')
 
     instances = {}
     labels = {}
+    all_features = set()
     for line in data_file:
         line_array = line.split()
         instance_name = line_array[0]
@@ -24,13 +25,14 @@ def get_vectors(data_filename):
         values = line_array[3::2] # every other word in line starting with fourth
             
         for f, v in zip(features, values):
+            all_features.add(f)
             if not (f in instances[instance_name]):
                 instances[instance_name][f] = v
             else:
                 instances[instance_name][f] += v
         
     data_file.close()
-    return [instances, labels]
+    return [instances, labels, len(all_features)]
 
 # get euclidean distance between two vectors
 def get_euclidean(instance_vector, neighbor_vector):
@@ -127,7 +129,9 @@ def vote(neighbors_list, all_vectors, labels):
     for label in labels:
         ranks[label] = 0
     for neighbor in neighbors_list:
-        print all_vectors[neighbor[0]]
+        if neighbor[0] == ['']:
+            continue
+        #print all_vectors[neighbor[0]]
         label = all_vectors[neighbor[0]]['class_label']
         ranks[label] += 1
 
@@ -142,22 +146,47 @@ def vote(neighbors_list, all_vectors, labels):
             best_label = label
             best_prob = ranks[label]
 
-    #ranks['winner'] = best_label
+    ranks['winner'] = best_label
     return ranks
 
-def print_sys(vector_guesses, sys, real_vectors):
+def print_sys(vector_guesses, sys_file, real_vectors):
     for instance in vector_guesses:
         real_class = real_vectors[instance]['class_label']
-        sys.write(instance + " ")
+        sys_file.write(instance + " ")
         #sys.write(vector_guesses[instance]['winner'] + " ")
-        #vector_guesses[instance].pop('winner')
-        sys.write(real_class + " ")
+        temp = vector_guesses[instance].pop('winner')
+        sys_file.write(real_class + " ")
         sorted_votes = sorted(vector_guesses[instance].iteritems()\
         , key=itemgetter(1), reverse=True)
         for tup in sorted_votes:
-            sys.write(tup[0] + " ")
-            sys.write(str(tup[1]) + " ")
-        sys.write("\n")
+            sys_file.write(tup[0] + " ")
+            sys_file.write(str(tup[1]) + " ")
+        sys_file.write("\n")
+        vector_guesses[instance]['winner'] = temp
+
+def print_acc(vectors, guesses, labels):
+    counts = {}
+    num_right = 0
+    for actuallabel in labels:
+        sys.stdout.write("\t" + actuallabel)
+        counts[actuallabel] = {}
+        for expectedlabel in labels:
+            counts[actuallabel][expectedlabel] = 0
+    for instance in vectors:
+        actual_label = vectors[instance]['class_label']
+        expected_label = guesses[instance]['winner']
+        counts[actual_label][expected_label] += 1
+        if actual_label == expected_label:
+            num_right += 1
+
+    sys.stdout.write("\n")
+    for actuallabel in labels:
+        sys.stdout.write(actuallabel)
+        for expectedlabel in labels:
+            sys.stdout.write("\t" + str(counts[actuallabel][expectedlabel]))
+        sys.stdout.write("\n")
+    accuracy = float(num_right) / len(vectors)
+    return accuracy
 
 # main
 if (len(sys.argv) < 6):
@@ -181,7 +210,7 @@ for instance_vector in train_vectors:
         vector_scores[instance_vector] = [[[""],[float("inf")]]]*k
     else:
         vector_scores[instance_vector] = [[[""],0.0]]*k
-    print vector_scores
+    #print vector_scores
     #for i in range(0,k-1):
     #    vector_scores[instance_vector][i][1] = float("inf")
 
@@ -211,9 +240,9 @@ for instance_vector in train_vectors:
     vector_guesses[instance_vector] = vote(vector_scores[instance_vector],\
     train_vectors, labels)
 
-sys = open(sys_filename, 'w')
-sys.write("%%%%% training data:\n")
-print_sys(vector_guesses, sys, train_vectors)
+sys_file = open(sys_filename, 'w')
+sys_file.write("%%%%% training data:\n")
+print_sys(vector_guesses, sys_file, train_vectors)
 
 test_vectors_labels = get_vectors(test_data_filename)
 test_vectors = test_vectors_labels[0]
@@ -243,7 +272,7 @@ for instance_vector in test_vectors:
         else:
             similarity = get_cosine(test_vectors[instance_vector],\
             train_vectors[neighbor_vector])
-            if similarity > vector_scores[instance_vector][k-1][1]:
+            if similarity > test_scores[instance_vector][k-1][1]:
                 test_scores[instance_vector] = \
                 insert_distance(test_scores[instance_vector], similarity,\
                 neighbor_vector, "sim")
@@ -252,5 +281,20 @@ for instance_vector in test_vectors:
     test_guesses[instance_vector] = vote(test_scores[instance_vector],\
     train_vectors, labels)
 
-sys.write("\n%%%%% testing data:\n")
-print_sys(test_guesses, sys, test_vectors)
+sys_file.write("\n%%%%% testing data:\n")
+print_sys(test_guesses, sys_file, test_vectors)
+
+# print confusion matrix
+print "class_num=", len(labels), ", feat_num=", vectors_labels[2]
+
+print "\nConfusion matrix for the training data:"
+print "row is the truth, column is the system output\n"
+#print vector_guesses
+training_acc = print_acc(train_vectors, vector_guesses, labels)
+print "Training accuracy:", training_acc
+
+print "\nConfusion matrix for the testing data:"
+print "row is the truth, column is the system output\n"
+#print vector_guesses
+testing_acc = print_acc(test_vectors, test_guesses, labels)
+print "Testing accuracy:", testing_acc

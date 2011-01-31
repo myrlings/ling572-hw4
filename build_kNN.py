@@ -251,7 +251,10 @@ test_vectors = test_vectors_labels[0]
 test_scores = {}
 test_guesses = {}
 for instance_vector in test_vectors:
-    test_scores[instance_vector] = [[[""],[float("inf")]]]*k
+    if similarity_func == 1:
+        test_scores[instance_vector] = [[[""],[float("inf")]]]*k
+    else:
+        test_scores[instance_vector] = [[[""],0.0]]*k
     #for i in range(0,k-1):
     #    test_scores[instance_vector][i][1] = float("inf")
 
@@ -264,7 +267,11 @@ for instance_vector in test_vectors:
             distance = get_euclidean(test_vectors[instance_vector], \
             train_vectors[neighbor_vector])
             # if the distance is better than the last one of the sorted list
+
+            print test_scores[instance_vector]
             if distance < test_scores[instance_vector][k-1][1]:
+                print "here we are"
+                print test_scores[instance_vector]
                 test_scores[instance_vector] = \
                 insert_distance(test_scores[instance_vector], distance,\
                 neighbor_vector, "dist")
@@ -276,6 +283,7 @@ for instance_vector in test_vectors:
                 test_scores[instance_vector] = \
                 insert_distance(test_scores[instance_vector], similarity,\
                 neighbor_vector, "sim")
+        #print test_scores[instance_vector]
 
     # find the class based on the neighbors
     test_guesses[instance_vector] = vote(test_scores[instance_vector],\

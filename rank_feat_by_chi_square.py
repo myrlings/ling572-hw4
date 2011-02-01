@@ -4,18 +4,18 @@ global_features = set()
 class_counts = {}
 features_in_classes = {} # class : {feature: count}
 doc_freq = {} #feature: number of documents it appears in
-contingency_table = {} #feature : (top,bottom)
+table_3 = {} #feature : (top,bottom)
 chi_squared = {}
+instance_count = 0
 
 for instance in sys.stdin.readlines():
+	instance_count +=1
 	instance = instance.split()
 	seen_in_doc = set() #features in this doc
 	
-	# instance_count += 1
 	path = instance[0]
 	classification = instance[1]
 	features = instance[2::2]
-	# values = instance[3::2]
 	
 	if classification in classes:
 		class_counts[classification] +=1
@@ -40,28 +40,70 @@ for instance in sys.stdin.readlines():
 			features_in_classes[classification]['__features__'].add(f)
 			features_in_classes[classification][f] = 1
 
-#build contingency table per feature
 
+# #build table 3 per feature
+# for feature in global_features:
+# 	table_3[feature] = [] #list of tuples (top_row,bottom_row), all classes
+# 	for classification in classes:
+# 		#fill in missing features
+# 		for missing_feature in global_features-features_in_classes[classification]['__features__']:
+# 			features_in_classes[classification][missing_feature] = 0
+# 			
+# 		table_3[feature].append((class_counts[classification],\
+# 		class_counts[classification]-features_in_classes[classification][feature]))
+# 
+# #compute chi square
+# for feature in global_features:
+# 	to_sum = []
+# 	for top,bottom in table_3[feature]: #observed-expected/expected
+# 		try:
+# 			to_sum.append((top**2)/bottom)
+# 		except ZeroDivisionError:  #i'm sure there are better ways to do this
+# 			sys.stderr.write("ZeroDivisionError, no need for concern")
+# 		
+# 	chi_squared[feature] = sum(to_sum)
+
+
+#fill in missing features
 for feature in global_features:
-	contingency_table[feature] = [] #list of tuples (top_row,bottom_row), all classes
 	for classification in classes:
-		#fill in missing features
 		for missing_feature in global_features-features_in_classes[classification]['__features__']:
 			features_in_classes[classification][missing_feature] = 0
 			
-		contingency_table[feature].append((class_counts[classification],\
-		class_counts[classification]-features_in_classes[classification][feature]))
-		
-#compute chi square
-for feature in global_features:
-	to_sum = []
-	for top,bottom in contingency_table[feature]: #observed-expected/expected
-		try:
-			to_sum.append((top**2)/bottom)
-		except ZeroDivisionError:  #i'm sure there are better ways to do this
-			sys.stderr.write("ZeroDivisionError, no need for concern")
-		
-	chi_squared[feature] = sum(to_sum)
 
+# 			compute chi square
+for feature in global_features:
+	for classification in classes:
+		
+
+# #build E table from O table  (features_in_classes)
+# E_table = {}
+# for feature in global_features:
+# 	E_table[feature] = {} #just initializing it
+# 	row_total = 0
+# 	for classification in classes: # get row total
+# 		E_table[feature][classificaAtion] = 0
+# 		row_total += features_in_classes[classification][feature]	
+# 	for classification in classes: # get row total	
+# 		e_value = row_total / len(classes)
+# 		E_table[feature][classification] = e_value
+# 		# if e_value != 0:
+# 		# 	print feature,classification,e_value
+# 	
+# 		
+# 
+# # compute chi square
+# for feature in global_features:
+# 	to_sum = []
+# 	for classification in classes:
+# 		E = E_table[feature][classification]
+# 		O = features_in_classes[classification][feature]
+# 		try:
+# 			to_sum.append((((O-E)**2)/E))		
+# 		except ZeroDivisionError:  #i'm sure there are better ways to do this
+# 			sys.stderr.write("ZeroDivisionError, no need for concern")
+# 	chi_squared[feature] = sum(to_sum)
+# # 
+# # 
 for key in sorted(chi_squared.keys(), key=chi_squared.get, reverse=True):
 	print key +" "+ str(chi_squared[key]) + " " + str(doc_freq[key])

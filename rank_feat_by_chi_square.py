@@ -55,14 +55,26 @@ for feature in global_features:
 		class_counts[classification]-features_in_classes[feature][classification]))
 # 
 #compute chi square
+#Chad's algo:
+# -For each feature:
+#   score <- 0
+#   for each class that feature had a count for:
+#     expected <- cnt(class)/2.0
+#     withF <- cnt(class, feature)
+#     withoutF <- cnt(class) - cnt(class, feature)
+#     score <- score + [withF-expected]^2/expected
+#     score <- score + [withoutF-expected]^2/expected //edit: line added - I accidentally left it out of my original post
+
+
 for feature in global_features:
 	to_sum = []
-	for not_feature,feature in table_3[feature]: #observed-expected/expected
+	for class_count,not_feature in table_3[feature]: #observed-expected/expected
 		try:
-			to_sum.append((top**2)/bottom)
+			expected = total_in_class[feature] / 2
+			observed = class_count-not_feature
+			to_sum.append(((observed-expected)**2)/expected)
 		except ZeroDivisionError:  #i'm sure there are better ways to do this
 			sys.stderr.write("ZeroDivisionError, no need for concern")
-		
 	chi_squared[feature] = sum(to_sum)
 
 

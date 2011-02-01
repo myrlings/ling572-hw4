@@ -48,11 +48,12 @@ for instance in sys.stdin.readlines():
 
 #build table 3 per feature
 for feature in global_features:
+	#fill in missing features
+	for missing_class in classes-features_in_classes[feature]['__classes__']:
+		features_in_classes[feature][missing_class] = 0
+		
 	table_3[feature] = [] #list of tuples (top_row,bottom_row), all classes
 	for classification in classes:
-		#fill in missing features
-		for missing_class in classes-features_in_classes[feature]['__classes__']:
-			features_in_classes[feature][missing_class] = 0
 		table_3[feature].append((class_counts[classification],\
 		class_counts[classification]-features_in_classes[feature][classification]))
 # 
@@ -69,11 +70,10 @@ for feature in global_features:
 
 
 for feature in global_features:
-	to_sum = []
-	expected = features_in_classes
+	to_sum = []	
 	for classification in classes:
-		 row_total += features_in_classes[feature][classification]
-	expected = row_total / 2
+		
+
 	for class_count,not_feature in table_3[feature]: #observed-expected/expected
 		try:
 			expected = total_in_class[feature] / 2

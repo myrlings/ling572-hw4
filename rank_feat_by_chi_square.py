@@ -51,7 +51,6 @@ for feature in global_features:
 	#fill in missing features
 	for missing_class in classes-features_in_classes[feature]['__classes__']:
 		features_in_classes[feature][missing_class] = 0
-		
 	table_3[feature] = [] #list of tuples (top_row,bottom_row), all classes
 	for classification in classes:
 		table_3[feature].append((class_counts[classification],\
@@ -71,12 +70,13 @@ for feature in global_features:
 
 for feature in global_features:
 	to_sum = []	
+	#looping through table 3 will loop through all classifications
+	index = -1 #just to initialize
 	for classification in classes:
-		
-
-	for class_count,not_feature in table_3[feature]: #observed-expected/expected
+		index+=1
+		class_count,not_feature = table_3[feature][index]
 		try:
-			expected = total_in_class[feature] / 2
+			expected = total_in_class[classification] / 2
 			observed = class_count-not_feature
 			to_sum.append(((observed-expected)**2)/expected)
 		except ZeroDivisionError:  #i'm sure there are better ways to do this

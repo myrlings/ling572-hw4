@@ -44,39 +44,38 @@ for instance in sys.stdin.readlines():
 			except KeyError:
 				doc_freq[f] = 1
 
-# #build table 3 per feature
-# for feature in global_features:
-# 	table_3[feature] = [] #list of tuples (top_row,bottom_row), all classes
-# 	for classification in classes:
-# 		#fill in missing features
-# 		for missing_feature in global_features-features_in_classes[classification]['__features__']:
-# 			features_in_classes[classification][missing_feature] = 0
-# 			
-# 		table_3[feature].append((class_counts[classification],\
-# 		class_counts[classification]-features_in_classes[classification][feature]))
-# 
-# #compute chi square
-# for feature in global_features:
-# 	to_sum = []
-# 	for top,bottom in table_3[feature]: #observed-expected/expected
-# 		try:
-# 			to_sum.append((top**2)/bottom)
-# 		except ZeroDivisionError:  #i'm sure there are better ways to do this
-# 			sys.stderr.write("ZeroDivisionError, no need for concern")
-# 		
-# 	chi_squared[feature] = sum(to_sum)
-
-
-#fill in missing features
+#build table 3 per feature
 for feature in global_features:
+	table_3[feature] = [] #list of tuples (top_row,bottom_row), all classes
 	for classification in classes:
-		for missing_class in classes-features_in_classes[f]['__classes__']:
+		#fill in missing features
+		for missing_class in classes-features_in_classes[feature]['__classes__']:
 			features_in_classes[f][classification] = 0
-			
-
-# 			compute chi square
+		table_3[feature].append((class_counts[classification],\
+		class_counts[classification]-features_in_classes[feature][classification]))
+# 
+#compute chi square
 for feature in global_features:
-	for classification in classes:
+	to_sum = []
+	for not_feature,feature in table_3[feature]: #observed-expected/expected
+		try:
+			to_sum.append((top**2)/bottom)
+		except ZeroDivisionError:  #i'm sure there are better ways to do this
+			sys.stderr.write("ZeroDivisionError, no need for concern")
+		
+	chi_squared[feature] = sum(to_sum)
+
+
+# #fill in missing features
+# for feature in global_features:
+# 	for classification in classes:
+# 		for missing_class in classes-features_in_classes[f]['__classes__']:
+# 			features_in_classes[f][classification] = 0
+# 			
+# 
+# # 			compute chi square
+# for feature in global_features:
+# 	for classification in classes:
 		
 
 # #build E table from O table  (features_in_classes)

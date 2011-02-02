@@ -1,0 +1,56 @@
+Matt Todd
+Caleb Barr
+2/2/11
+LING 572 HW #4
+
+Table 1 test accuracies
+k   Euclidean Dist  Cosine Sim
+1   .627            .72
+5   .637            .67
+10  .627            .637
+
+Table 2 test accuracies (binarized vectors)
+k   Euclidean Dist  Cosine Sim
+1   .633            .83
+5   .557            .823
+10  .587            .827
+
+Table 4
+p0      # of related features   test accuracy
+bsline  32846                   .72
+.001    2185                    .663
+.01     3615                    .687
+.025    4796                    .687
+.05     6512                    .69
+.1      8218                    .7
+
+Table 5 (binarized vectors)
+p0      test accuracy
+bsline  .83
+.001    .783
+.01     .807
+.025    .803
+.05     .807
+.1      .82
+
+Q7) Cosine similarity seems to be a better distance measure for kNN
+classification than Euclidean distance; in every case, its test accuracy is
+better. Strangely, with our results, it seemed to give the consistently best
+results when k=1, which does not seem like it should be the case. The Euclidean
+distance did do better with k=5 on the non-binarized vectors, but given the
+other results, k=1 appears to be a better bet. So apparently the very closest
+vector gives the most accurate vote in this data set.
+
+It seems to be more important with regards to document similarity whether a 
+word appeared in a document at all; the results get much better when we only
+count each word once per document. This makes sense, especially when the 
+vectors aren't normalized for length in our algorithm.
+
+In terms of feature selection, I was hoping that it would improve our accuracy,
+but it did not. I guess in this case the more data, the better. However, it
+did improve the run time significantly (from ~35 minutes in the baseline to
+less than 10 minutes with p=.001). The more features we selected, the more
+our accuracy approached the baseline, but p=.01 gave at least as good results
+as p=.025 in both test runs; so perhaps, if run time is important, p=.01 might
+be a good number to pick.
+

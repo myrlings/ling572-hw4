@@ -9,7 +9,7 @@ flist_file = open(sys.argv[1], 'r')
 in_file = open(sys.argv[2], 'r')
 out_file = open(sys.argv[3], 'w')
 
-threshhold = 5000
+threshhold = 7.378
 
 related_features = set()
 for line in flist_file:
